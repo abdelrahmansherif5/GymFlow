@@ -1,15 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GymFlow API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: days
+    description: Workout day management
+  - name: machines
+    description: Machine management
+  - name: settings
+    description: App settings
 paths:
   /healthz:
     get:
@@ -24,6 +29,177 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /days:
+    get:
+      operationId: getDays
+      tags: [days]
+      summary: Get all workout days
+      responses:
+        "200":
+          description: List of days
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Day"
+    post:
+      operationId: createDay
+      tags: [days]
+      summary: Create a workout day
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDayRequest"
+      responses:
+        "201":
+          description: Created day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Day"
+
+  /days/{id}:
+    put:
+      operationId: updateDay
+      tags: [days]
+      summary: Update a workout day
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDayRequest"
+      responses:
+        "200":
+          description: Updated day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Day"
+    delete:
+      operationId: deleteDay
+      tags: [days]
+      summary: Delete a workout day
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /machines:
+    get:
+      operationId: getMachines
+      tags: [machines]
+      summary: Get all machines
+      responses:
+        "200":
+          description: List of machines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Machine"
+    post:
+      operationId: createMachine
+      tags: [machines]
+      summary: Create a machine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMachineRequest"
+      responses:
+        "201":
+          description: Created machine
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Machine"
+
+  /machines/{id}:
+    put:
+      operationId: updateMachine
+      tags: [machines]
+      summary: Update a machine
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMachineRequest"
+      responses:
+        "200":
+          description: Updated machine
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Machine"
+    delete:
+      operationId: deleteMachine
+      tags: [machines]
+      summary: Delete a machine
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get app settings
+      responses:
+        "200":
+          description: App settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update app settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +210,115 @@ components:
       required:
         - status
 
+    Day:
+      type: object
+      properties:
+        id:
+          type: integer
+        dayName:
+          type: string
+        workoutType:
+          type: string
+          nullable: true
+        workoutIcon:
+          type: string
+          nullable: true
+        orderIndex:
+          type: integer
+      required:
+        - id
+        - dayName
+        - orderIndex
+
+    CreateDayRequest:
+      type: object
+      properties:
+        dayName:
+          type: string
+        workoutType:
+          type: string
+          nullable: true
+        workoutIcon:
+          type: string
+          nullable: true
+        orderIndex:
+          type: integer
+      required:
+        - dayName
+        - orderIndex
+
+    UpdateDayRequest:
+      type: object
+      properties:
+        dayName:
+          type: string
+        workoutType:
+          type: string
+          nullable: true
+        workoutIcon:
+          type: string
+          nullable: true
+        orderIndex:
+          type: integer
+
+    Machine:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+
+    CreateMachineRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    UpdateMachineRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+
+    Settings:
+      type: object
+      properties:
+        currentDay:
+          type: string
+        language:
+          type: string
+          enum: [en, ar]
+        theme:
+          type: string
+          enum: [light, dark]
+      required:
+        - currentDay
+        - language
+        - theme
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        currentDay:
+          type: string
+        language:
+          type: string
+          enum: [en, ar]
+        theme:
+          type: string
+          enum: [light, dark]

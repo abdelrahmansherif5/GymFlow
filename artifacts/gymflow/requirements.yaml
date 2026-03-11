@@ -1,0 +1,17 @@
+packages:
+  "framer-motion": "For page transitions and list staggered animations"
+  "react-hook-form": "For robust form state management"
+  "@hookform/resolvers": "For Zod schema validation integration"
+  "zod": "For runtime type validation of forms"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes safely"
+
+images:
+  - path: "artifacts/gymflow/public/images/hero-mesh.png"
+    description: "Abstract dark 3D mesh background with glowing neon green accents, sleek tech futuristic gym aesthetic"
+    aspect_ratio: "16:9"
+
+notes:
+  - Uses @workspace/api-client-react generated hooks for API integration
+  - App state (theme, language, currentDay) is driven by the backend Settings endpoint
+  - RTL support via dir="rtl" on document root for Arabic language
