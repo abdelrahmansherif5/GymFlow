@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useDaysList, useSettings } from "@/hooks/use-gymflow";
 import { useTranslation } from "@/lib/i18n";
 import { BottomNavLayout } from "@/components/layout";
-import { CheckCircle2, XCircle, Activity, Sparkles, ChevronRight, Flame, Trophy } from "lucide-react";
+import { CheckCircle2, XCircle, Activity, Sparkles, ChevronRight, Flame, Trophy, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "gymflow_streak";
@@ -77,6 +77,10 @@ export default function Home() {
   }
 
   function handleCancel() {
+    setWorkoutState("cancelled");
+  }
+
+  function handleRedo() {
     setWorkoutState("active");
   }
 
@@ -208,15 +212,49 @@ export default function Home() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex flex-col items-center gap-2 py-3"
+                    className="space-y-3"
                   >
-                    <div className="flex items-center gap-2 text-primary font-bold text-lg">
-                      <CheckCircle2 size={24} className="text-primary" />
-                      {lang === "ar" ? "أحسنت! تمرين اليوم مكتمل 🔥" : "Great job! Today's workout complete 🔥"}
+                    <div className="flex flex-col items-center gap-1 py-1">
+                      <div className="flex items-center gap-2 text-primary font-bold text-lg">
+                        <CheckCircle2 size={24} className="text-primary" />
+                        {lang === "ar" ? "أحسنت! تمرين اليوم مكتمل 🔥" : "Great job! Today's workout complete 🔥"}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {lang === "ar" ? `سلسلة: ${streakData.streak} يوم` : `Streak: ${streakData.streak} day${streakData.streak !== 1 ? "s" : ""}`}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {lang === "ar" ? `سلسلة: ${streakData.streak} يوم` : `Streak: ${streakData.streak} day${streakData.streak !== 1 ? "s" : ""}`}
-                    </p>
+                    <button
+                      onClick={handleRedo}
+                      className="w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-muted-foreground border border-white/10 hover:bg-white/15 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw size={16} />
+                      {lang === "ar" ? "إعادة التمرين" : "Redo Workout"}
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* CANCELLED */}
+                {workoutState === "cancelled" && (
+                  <motion.div
+                    key="cancelled"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-3"
+                  >
+                    <div className="flex flex-col items-center gap-1 py-1">
+                      <div className="flex items-center gap-2 text-muted-foreground font-semibold text-base">
+                        <XCircle size={20} className="text-red-400" />
+                        {lang === "ar" ? "تم إلغاء التمرين" : "Workout cancelled"}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRedo}
+                      className="w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-muted-foreground border border-white/10 hover:bg-white/15 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw size={16} />
+                      {lang === "ar" ? "إعادة التمرين" : "Redo Workout"}
+                    </button>
                   </motion.div>
                 )}
 
