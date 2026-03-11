@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useDaysList, useSettings } from "@/hooks/use-gymflow";
 import { useTranslation } from "@/lib/i18n";
 import { BottomNavLayout } from "@/components/layout";
-import { CheckCircle2, XCircle, Activity, Sparkles, ChevronRight, Flame, Trophy, Play } from "lucide-react";
+import { CheckCircle2, XCircle, Activity, Sparkles, ChevronRight, Flame, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "gymflow_streak";
@@ -49,12 +49,12 @@ function markDoneAndCalcStreak(current: StreakData): StreakData {
   };
 }
 
-type WorkoutState = "idle" | "active" | "done" | "cancelled";
+type WorkoutState = "active" | "done" | "cancelled";
 
 export default function Home() {
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: days = [], isLoading: daysLoading } = useDaysList();
-  const [workoutState, setWorkoutState] = useState<WorkoutState>("idle");
+  const [workoutState, setWorkoutState] = useState<WorkoutState>("active");
   const [streakData, setStreakData] = useState<StreakData>(() => loadStreak());
 
   const lang = settings?.language || "en";
@@ -69,10 +69,6 @@ export default function Home() {
     if (todayAlreadyDone) setWorkoutState("done");
   }, [todayAlreadyDone]);
 
-  function handleStart() {
-    setWorkoutState("active");
-  }
-
   function handleDone() {
     const updated = markDoneAndCalcStreak(streakData);
     saveStreak(updated);
@@ -81,7 +77,7 @@ export default function Home() {
   }
 
   function handleCancel() {
-    setWorkoutState("idle");
+    setWorkoutState("active");
   }
 
   if (settingsLoading || daysLoading) {
@@ -173,21 +169,6 @@ export default function Home() {
               </div>
 
               <AnimatePresence mode="wait">
-
-                {/* IDLE → Start Workout */}
-                {workoutState === "idle" && (
-                  <motion.button
-                    key="start"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    onClick={handleStart}
-                    className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-primary to-primary/80 text-black shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:shadow-[0_0_30px_rgba(22,163,74,0.6)] active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
-                  >
-                    <Play fill="currentColor" size={20} />
-                    {t("startWorkout")}
-                  </motion.button>
-                )}
 
                 {/* ACTIVE → Done or Cancel */}
                 {workoutState === "active" && (
