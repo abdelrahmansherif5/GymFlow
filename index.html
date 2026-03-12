@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymFlow — Track Your Gains</title>
+  <meta name="description" content="GymFlow is a dark-themed fitness tracking app. Track your workout streaks, manage training days, and assign machines to every session." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0A0A0A;
+      --card: #141414;
+      --card-alt: #1A1A1A;
+      --border: #222222;
+      --green: #22C55E;
+      --green-muted: #14532D;
+      --orange: #F97316;
+      --text: #FFFFFF;
+      --text-secondary: #A0A0A0;
+      --text-muted: #606060;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo span { color: var(--green); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    /* HERO */
+    .hero {
+      padding: 160px 24px 100px;
+      text-align: center;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-muted);
+      border: 1px solid var(--green);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+      margin-bottom: 28px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 8vw, 72px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 .accent { color: var(--green); }
+
+    .hero p {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 540px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 15px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .btn-secondary:hover { border-color: #444; transform: translateY(-1px); }
+
+    /* PHONE MOCKUP */
+    .mockup-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 64px auto 0;
+      padding: 0 24px;
+    }
+
+    .phone {
+      width: min(320px, 90vw);
+      background: var(--card);
+      border-radius: 40px;
+      border: 2px solid #2A2A2A;
+      padding: 16px;
+      box-shadow: 0 40px 120px rgba(34,197,94,0.12), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .phone-inner {
+      background: var(--bg);
+      border-radius: 28px;
+      overflow: hidden;
+      padding: 20px 16px;
+    }
+
+    .phone-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .phone-title { font-size: 22px; font-weight: 700; }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .stat-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .stat-num { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+    .stat-label { font-size: 11px; color: var(--text-secondary); }
+
+    .workout-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .workout-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .workout-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .workout-name { font-size: 14px; font-weight: 600; }
+    .workout-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+    .btn-row { display: flex; gap: 8px; }
+
+    .mock-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mock-btn-green { background: var(--green); color: #000; }
+    .mock-btn-grey { background: #2A2A2A; color: var(--text); border: 1px solid var(--border); font-weight: 600; }
+
+    /* FEATURES */
+    .features {
+      padding: 100px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 56px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover { border-color: #333; transform: translateY(-2px); }
+
+    .feature-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+
+    .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 80px 24px 100px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .cta h2 { font-size: clamp(28px, 5vw, 42px); font-weight: 700; letter-spacing: -1px; margin-bottom: 16px; }
+    .cta p { color: var(--text-secondary); font-size: 16px; margin-bottom: 36px; line-height: 1.6; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 14px 20px; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-logo">Gym<span>Flow</span></div>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#download">Download</a></li>
+    </ul>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">🔥 Fitness Tracker</div>
+    <h1>Train smarter.<br /><span class="accent">Track everything.</span></h1>
+    <p>GymFlow helps you stay consistent with streak tracking, daily workout plans, and machine-level detail — all in a clean dark interface.</p>
+    <div class="hero-actions">
+      <a href="#download" class="btn-primary">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 16l-6-6h4V4h4v6h4l-6 6z"/><path d="M4 20h16" stroke-linecap="round"/>
+        </svg>
+        Download App
+      </a>
+      <a href="#features" class="btn-secondary">See Features</a>
+    </div>
+
+    <div class="mockup-wrap">
+      <div class="phone">
+        <div class="phone-inner">
+          <div class="phone-status">
+            <div class="phone-title">GymFlow</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Mon, Mar 12</div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#7C2D12">⚡</div>
+              <div class="stat-num">7</div>
+              <div class="stat-label">Day Streak</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#14532D">🏆</div>
+              <div class="stat-num">42</div>
+              <div class="stat-label">Total Workouts</div>
+            </div>
+          </div>
+          <div class="workout-card">
+            <div class="workout-header">
+              <div class="workout-dot"></div>
+              <div>
+                <div class="workout-name">Chest & Triceps</div>
+                <div class="workout-sub">4 machines planned</div>
+              </div>
+            </div>
+            <div class="btn-row">
+              <div class="mock-btn mock-btn-green">✓ Done</div>
+              <div class="mock-btn mock-btn-grey">✕ Cancel</div>
+              <div class="mock-btn mock-btn-grey" style="color:var(--text-secondary)">≡ Details</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="section-label">Why GymFlow</div>
+    <div class="section-title">Everything you need to stay consistent</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#7C2D12">⚡</div>
+        <h3>Streak Tracking</h3>
+        <p>Never lose your momentum. Daily streaks and total workout counts keep you motivated and accountable.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#14532D">📅</div>
+        <h3>Daily Plans</h3>
+        <p>Assign different workout types to each day of the week. Structure your split exactly how you want it.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#1E3A5F">🏋️</div>
+        <h3>Machine Management</h3>
+        <p>Add every machine in your gym with photos from your phone. Assign specific machines to each training day.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#3D1A00">🌙</div>
+        <h3>Dark & Light Theme</h3>
+        <p>Switch between a sleek dark interface and a clean light mode — your eyes, your choice.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#2D1B69">🌍</div>
+        <h3>English & Arabic</h3>
+        <p>Full bilingual support with instant language switching and proper RTL layout for Arabic.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#1A1A1A; border:1px solid #2A2A2A">📱</div>
+        <h3>Native Mobile</h3>
+        <p>Built for iOS and Android with native gestures, haptic feedback, and liquid glass tab bars on iOS 26+.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta" id="download">
+    <h2>Ready to start training?</h2>
+    <p>Scan the QR code in Expo Go to run the app instantly on your phone, or build a native APK for Android.</p>
+    <div class="hero-actions">
+      <a href="https://expo.dev/" target="_blank" rel="noopener" class="btn-primary">
+        Get Expo Go
+      </a>
+      <a href="https://github.com/" target="_blank" rel="noopener" class="btn-secondary">
+        View Source
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <p>GymFlow &mdash; Built with love for your gains &nbsp;|&nbsp; Dark theme, green dreams.</p>
+  </footer>
+
+</body>
+</html>
