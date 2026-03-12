@@ -1,14 +1,9 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  useGetSettings,
-  updateSettings,
-} from "@workspace/api-client-react";
+import { useGetDays } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,98 +11,64 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQueryClient } from "@tanstack/react-query";
-import { getGetSettingsQueryKey, useGetDays } from "@workspace/api-client-react";
-import { Colors } from "@/constants/colors";
-
-const DAYS_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+import { useSettings } from "@/contexts/SettingsContext";
+import type { AppColors } from "@/constants/colors";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const qc = useQueryClient();
-  const { data: settings, isLoading } = useGetSettings();
+  const { colors, settings, updateSetting, loading } = useSettings();
+  const S = useMemo(() => makeStyles(colors), [colors]);
   const { data: days } = useGetDays();
-  const [saving, setSaving] = useState(false);
 
-  const dayOptions = days?.map((d) => d.dayName) ?? DAYS_EN;
+  const dayOptions = days?.map((d) => d.dayName) ?? [
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+  ];
 
-  const handleUpdate = async (field: string, value: string) => {
-    if (!settings) return;
-    setSaving(true);
+  const handleUpdate = async (
+    field: "currentDay" | "language" | "theme",
+    value: string
+  ) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      const updated = await updateSettings({
-        currentDay: settings.currentDay,
-        language: settings.language as "en" | "ar",
-        theme: settings.theme as "light" | "dark",
-        [field]: value,
-      });
-      qc.setQueryData(getGetSettingsQueryKey(), updated);
-      if (field === "currentDay") {
-        await AsyncStorage.setItem(
-          "gymflow_settings",
-          JSON.stringify({ currentDay: value, language: updated.language, theme: updated.theme })
-        );
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      Alert.alert("Error", "Could not save settings.");
-    } finally {
-      setSaving(false);
-    }
+    await updateSetting(field, value);
   };
 
-  useEffect(() => {
-    if (settings) {
-      AsyncStorage.setItem(
-        "gymflow_settings",
-        JSON.stringify({
-          currentDay: settings.currentDay,
-          language: settings.language,
-          theme: settings.theme,
-        })
-      );
-    }
-  }, [settings]);
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <View style={[styles.root, styles.center, { backgroundColor: Colors.bg }]}>
-        <ActivityIndicator color={Colors.green} />
+      <View style={[S.root, S.center]}>
+        <ActivityIndicator color={colors.green} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: Colors.bg }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.title}>Settings</Text>
-        {saving && <ActivityIndicator size="small" color={Colors.green} />}
+    <View style={S.root}>
+      <View style={[S.header, { paddingTop: insets.top + 16 }]}>
+        <Text style={S.title}>Settings</Text>
       </View>
 
       <ScrollView
         contentContainerStyle={[
-          styles.content,
+          S.content,
           { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Section title="Today's Day">
-          <View style={styles.pillGroup}>
+        <Section title="Today's Day" colors={colors}>
+          <View style={S.pillGroup}>
             {dayOptions.map((d) => (
               <Pressable
                 key={d}
                 style={({ pressed }) => [
-                  styles.pill,
-                  settings?.currentDay === d && styles.pillActive,
+                  S.pill,
+                  settings.currentDay === d && S.pillActive,
                   pressed && { opacity: 0.7 },
                 ]}
                 onPress={() => handleUpdate("currentDay", d)}
               >
                 <Text
                   style={[
-                    styles.pillText,
-                    settings?.currentDay === d && styles.pillTextActive,
+                    S.pillText,
+                    settings.currentDay === d && S.pillTextActive,
                   ]}
                 >
                   {d.slice(0, 3)}
@@ -117,77 +78,69 @@ export default function SettingsScreen() {
           </View>
         </Section>
 
-        <Section title="Language">
-          <View style={styles.toggleRow}>
-            {(["en", "ar"] as const).map((lang) => (
-              <Pressable
-                key={lang}
-                style={({ pressed }) => [
-                  styles.toggleOption,
-                  settings?.language === lang && styles.toggleOptionActive,
-                  pressed && { opacity: 0.7 },
-                ]}
-                onPress={() => handleUpdate("language", lang)}
-              >
-                <Text style={styles.langFlag}>
-                  {lang === "en" ? "🇺🇸" : "🇸🇦"}
-                </Text>
-                <Text
-                  style={[
-                    styles.toggleText,
-                    settings?.language === lang && styles.toggleTextActive,
+        <Section title="Language" colors={colors}>
+          <View style={S.optionGroup}>
+            {(["en", "ar"] as const).map((lang) => {
+              const active = settings.language === lang;
+              return (
+                <Pressable
+                  key={lang}
+                  style={({ pressed }) => [
+                    S.optionRow,
+                    active && S.optionRowActive,
+                    pressed && { opacity: 0.7 },
                   ]}
+                  onPress={() => handleUpdate("language", lang)}
                 >
-                  {lang === "en" ? "English" : "العربية"}
-                </Text>
-                {settings?.language === lang && (
-                  <Feather name="check" size={14} color={Colors.green} />
-                )}
-              </Pressable>
-            ))}
+                  <Text style={S.optionFlag}>
+                    {lang === "en" ? "🇺🇸" : "🇸🇦"}
+                  </Text>
+                  <Text style={[S.optionText, active && S.optionTextActive]}>
+                    {lang === "en" ? "English" : "العربية"}
+                  </Text>
+                  {active && (
+                    <Feather name="check" size={16} color={colors.green} />
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </Section>
 
-        <Section title="Theme">
-          <View style={styles.toggleRow}>
-            {(["dark", "light"] as const).map((theme) => (
-              <Pressable
-                key={theme}
-                style={({ pressed }) => [
-                  styles.toggleOption,
-                  settings?.theme === theme && styles.toggleOptionActive,
-                  pressed && { opacity: 0.7 },
-                ]}
-                onPress={() => handleUpdate("theme", theme)}
-              >
-                <Feather
-                  name={theme === "dark" ? "moon" : "sun"}
-                  size={16}
-                  color={
-                    settings?.theme === theme
-                      ? Colors.green
-                      : Colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.toggleText,
-                    settings?.theme === theme && styles.toggleTextActive,
+        <Section title="Theme" colors={colors}>
+          <View style={S.optionGroup}>
+            {(["dark", "light"] as const).map((theme) => {
+              const active = settings.theme === theme;
+              return (
+                <Pressable
+                  key={theme}
+                  style={({ pressed }) => [
+                    S.optionRow,
+                    active && S.optionRowActive,
+                    pressed && { opacity: 0.7 },
                   ]}
+                  onPress={() => handleUpdate("theme", theme)}
                 >
-                  {theme === "dark" ? "Dark" : "Light"}
-                </Text>
-                {settings?.theme === theme && (
-                  <Feather name="check" size={14} color={Colors.green} />
-                )}
-              </Pressable>
-            ))}
+                  <Feather
+                    name={theme === "dark" ? "moon" : "sun"}
+                    size={18}
+                    color={active ? colors.green : colors.textSecondary}
+                  />
+                  <Text style={[S.optionText, active && S.optionTextActive]}>
+                    {theme === "dark" ? "Dark" : "Light"}
+                  </Text>
+                  {active && (
+                    <Feather name="check" size={16} color={colors.green} />
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </Section>
 
-        <View style={styles.versionCard}>
-          <Text style={styles.versionText}>GymFlow v1.0.0</Text>
-          <Text style={styles.versionSub}>Built with love for your gains</Text>
+        <View style={S.versionCard}>
+          <Text style={S.versionText}>GymFlow v1.0.0</Text>
+          <Text style={S.versionSub}>Built with love for your gains</Text>
         </View>
       </ScrollView>
     </View>
@@ -197,124 +150,119 @@ export default function SettingsScreen() {
 function Section({
   title,
   children,
+  colors,
 }: {
   title: string;
   children: React.ReactNode;
+  colors: AppColors;
 }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionCard}>{children}</View>
+    <View style={{ gap: 10 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: colors.textSecondary,
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+          fontFamily: "Inter_600SemiBold",
+        }}
+      >
+        {title}
+      </Text>
+      <View
+        style={{
+          backgroundColor: colors.card,
+          borderRadius: 16,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+        }}
+      >
+        {children}
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  center: { alignItems: "center", justifyContent: "center" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  content: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
-  section: { gap: 10 },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    fontFamily: "Inter_600SemiBold",
-  },
-  sectionCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  pillGroup: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  pill: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: Colors.cardAlt,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  pillActive: {
-    backgroundColor: Colors.greenMuted,
-    borderColor: Colors.green,
-  },
-  pillText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
-    fontWeight: "500",
-  },
-  pillTextActive: {
-    color: Colors.green,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  toggleRow: {
-    gap: 8,
-  },
-  toggleOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: Colors.cardAlt,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  toggleOptionActive: {
-    borderColor: Colors.green,
-    backgroundColor: Colors.greenMuted,
-  },
-  toggleText: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
-    fontWeight: "500",
-  },
-  toggleTextActive: {
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-    fontWeight: "600",
-  },
-  langFlag: {
-    fontSize: 18,
-  },
-  versionCard: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 4,
-  },
-  versionText: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontFamily: "Inter_500Medium",
-  },
-  versionSub: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontFamily: "Inter_400Regular",
-  },
-});
+function makeStyles(C: AppColors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bg },
+    center: { alignItems: "center", justifyContent: "center" },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: C.text,
+      fontFamily: "Inter_700Bold",
+    },
+    content: { paddingHorizontal: 20, gap: 20, paddingTop: 8 },
+    pillGroup: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    pill: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      backgroundColor: C.cardAlt,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    pillActive: { backgroundColor: C.greenMuted, borderColor: C.green },
+    pillText: {
+      fontSize: 13,
+      color: C.textSecondary,
+      fontFamily: "Inter_500Medium",
+      fontWeight: "500",
+    },
+    pillTextActive: {
+      color: C.green,
+      fontWeight: "700",
+      fontFamily: "Inter_700Bold",
+    },
+    optionGroup: { gap: 8 },
+    optionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: C.cardAlt,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    optionRowActive: { borderColor: C.green, backgroundColor: C.greenMuted },
+    optionFlag: { fontSize: 18 },
+    optionText: {
+      flex: 1,
+      fontSize: 15,
+      color: C.textSecondary,
+      fontFamily: "Inter_500Medium",
+      fontWeight: "500",
+    },
+    optionTextActive: {
+      color: C.text,
+      fontFamily: "Inter_600SemiBold",
+      fontWeight: "600",
+    },
+    versionCard: {
+      alignItems: "center",
+      paddingVertical: 24,
+      gap: 4,
+    },
+    versionText: {
+      fontSize: 14,
+      color: C.textMuted,
+      fontFamily: "Inter_500Medium",
+    },
+    versionSub: {
+      fontSize: 12,
+      color: C.textMuted,
+      fontFamily: "Inter_400Regular",
+    },
+  });
+}

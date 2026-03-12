@@ -1,15 +1,15 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   useGetMachines,
   createMachine,
   updateMachine,
   deleteMachine,
+  getGetMachinesQueryKey,
 } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,15 +27,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetMachinesQueryKey } from "@workspace/api-client-react";
-import { Colors } from "@/constants/colors";
+import { useSettings } from "@/contexts/SettingsContext";
+import type { AppColors } from "@/constants/colors";
 
 type Machine = { id: number; name: string; imageUrl?: string | null };
 
 export default function MachinesScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useSettings();
+  const S = useMemo(() => makeStyles(colors), [colors]);
+
   const qc = useQueryClient();
-  const { data: machines, isLoading, refetch } = useGetMachines();
+  const { data: machines, isLoading } = useGetMachines();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Machine | null>(null);
   const [name, setName] = useState("");
@@ -66,7 +69,10 @@ export default function MachinesScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission required", "Please allow photo library access to upload machine photos.");
+      Alert.alert(
+        "Permission required",
+        "Please allow photo library access to upload machine photos."
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -91,10 +97,7 @@ export default function MachinesScreen() {
           imageUrl: imageUri ?? null,
         });
       } else {
-        await createMachine({
-          name: name.trim(),
-          imageUrl: imageUri ?? null,
-        });
+        await createMachine({ name: name.trim(), imageUrl: imageUri ?? null });
       }
       await qc.invalidateQueries({ queryKey: getGetMachinesQueryKey() });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -123,66 +126,64 @@ export default function MachinesScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: Machine }) => (
-      <View style={styles.machineCard}>
+      <View style={S.machineCard}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
-            style={styles.machineImg}
+            style={S.machineImg}
             contentFit="cover"
           />
         ) : (
-          <View style={styles.machineImgPlaceholder}>
-            <Feather name="activity" size={20} color={Colors.green} />
+          <View style={S.machineImgPlaceholder}>
+            <Feather name="activity" size={20} color={colors.green} />
           </View>
         )}
-        <Text style={styles.machineName} numberOfLines={1}>
+        <Text style={S.machineName} numberOfLines={1}>
           {item.name}
         </Text>
-        <View style={styles.machineActions}>
+        <View style={S.machineActions}>
           <Pressable
             onPress={() => openEdit(item)}
-            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [S.iconBtn, pressed && { opacity: 0.6 }]}
           >
-            <Feather name="edit-2" size={16} color={Colors.textSecondary} />
+            <Feather name="edit-2" size={16} color={colors.textSecondary} />
           </Pressable>
           <Pressable
             onPress={() => handleDelete(item.id)}
-            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [S.iconBtn, pressed && { opacity: 0.6 }]}
           >
-            <Feather name="trash-2" size={16} color={Colors.red} />
+            <Feather name="trash-2" size={16} color={colors.red} />
           </Pressable>
         </View>
       </View>
     ),
-    []
+    [S, colors]
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: Colors.bg }]}>
-      <View
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
-      >
-        <Text style={styles.title}>Machines</Text>
+    <View style={S.root}>
+      <View style={[S.header, { paddingTop: insets.top + 16 }]}>
+        <Text style={S.title}>Machines</Text>
         <Pressable
           onPress={openAdd}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [S.addBtn, pressed && { opacity: 0.7 }]}
         >
           <Feather name="plus" size={18} color="#000" />
-          <Text style={styles.addBtnText}>Add</Text>
+          <Text style={S.addBtnText}>Add</Text>
         </Pressable>
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={Colors.green} />
+        <View style={S.center}>
+          <ActivityIndicator color={colors.green} />
         </View>
       ) : !machines?.length ? (
-        <View style={styles.center}>
-          <View style={styles.emptyIcon}>
-            <Feather name="activity" size={28} color={Colors.textMuted} />
+        <View style={S.center}>
+          <View style={S.emptyIcon}>
+            <Feather name="activity" size={28} color={colors.textMuted} />
           </View>
-          <Text style={styles.emptyTitle}>No machines yet</Text>
-          <Text style={styles.emptyText}>Tap Add to create your first machine</Text>
+          <Text style={S.emptyTitle}>No machines yet</Text>
+          <Text style={S.emptyHint}>Tap Add to create your first machine</Text>
         </View>
       ) : (
         <FlatList
@@ -190,7 +191,7 @@ export default function MachinesScreen() {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={[
-            styles.list,
+            S.list,
             { paddingBottom: insets.bottom + 100 },
           ]}
           showsVerticalScrollIndicator={false}
@@ -204,44 +205,44 @@ export default function MachinesScreen() {
         onRequestClose={closeForm}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.overlay}>
-            <Pressable style={styles.overlayBg} onPress={closeForm} />
+          <View style={S.overlay}>
+            <Pressable style={S.overlayBg} onPress={closeForm} />
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : undefined}
-              style={styles.sheetWrap}
+              style={S.sheetWrap}
             >
-              <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-                <View style={styles.sheetHandle} />
-                <Text style={styles.sheetTitle}>
+              <View style={[S.sheet, { paddingBottom: insets.bottom + 16 }]}>
+                <View style={S.sheetHandle} />
+                <Text style={S.sheetTitle}>
                   {editing ? "Edit Machine" : "New Machine"}
                 </Text>
 
-                <Pressable onPress={pickImage} style={styles.imagePicker}>
+                <Pressable onPress={pickImage} style={S.imagePicker}>
                   {imageUri ? (
                     <Image
                       source={{ uri: imageUri }}
-                      style={styles.imagePickerImg}
+                      style={S.imagePickerImg}
                       contentFit="cover"
                     />
                   ) : (
-                    <View style={styles.imagePickerPlaceholder}>
-                      <Feather name="camera" size={24} color={Colors.textMuted} />
-                      <Text style={styles.imagePickerText}>Upload Photo</Text>
+                    <View style={S.imagePickerPlaceholder}>
+                      <Feather name="camera" size={24} color={colors.textMuted} />
+                      <Text style={S.imagePickerText}>Upload Photo</Text>
                     </View>
                   )}
                   {imageUri && (
-                    <View style={styles.imagePickerOverlay}>
-                      <Feather name="camera" size={18} color={Colors.white} />
+                    <View style={S.imagePickerOverlay}>
+                      <Feather name="camera" size={18} color="#fff" />
                     </View>
                   )}
                 </Pressable>
 
-                <View style={styles.field}>
-                  <Text style={styles.label}>Name</Text>
+                <View style={S.field}>
+                  <Text style={S.label}>Name</Text>
                   <TextInput
-                    style={styles.input}
+                    style={S.input}
                     placeholder="e.g. Bench Press"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={colors.textMuted}
                     value={name}
                     onChangeText={setName}
                     returnKeyType="done"
@@ -249,20 +250,20 @@ export default function MachinesScreen() {
                   />
                 </View>
 
-                <View style={styles.formActions}>
+                <View style={S.formActions}>
                   <Pressable
                     style={({ pressed }) => [
-                      styles.cancelBtn,
+                      S.cancelBtn,
                       pressed && { opacity: 0.7 },
                     ]}
                     onPress={closeForm}
                   >
-                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                    <Text style={S.cancelBtnText}>Cancel</Text>
                   </Pressable>
                   <Pressable
                     style={({ pressed }) => [
-                      styles.saveBtn,
-                      !name.trim() && styles.saveBtnDisabled,
+                      S.saveBtn,
+                      !name.trim() && S.saveBtnDisabled,
                       pressed && { opacity: 0.8 },
                     ]}
                     onPress={handleSave}
@@ -271,7 +272,7 @@ export default function MachinesScreen() {
                     {saving ? (
                       <ActivityIndicator size="small" color="#000" />
                     ) : (
-                      <Text style={styles.saveBtnText}>
+                      <Text style={S.saveBtnText}>
                         {editing ? "Save" : "Create"}
                       </Text>
                     )}
@@ -286,224 +287,203 @@ export default function MachinesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  addBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.green,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  addBtnText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  emptyIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: Colors.card,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptyText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-  },
-  list: {
-    paddingHorizontal: 20,
-    gap: 10,
-    paddingTop: 8,
-  },
-  machineCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: Colors.card,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  machineImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-  },
-  machineImgPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: Colors.greenMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  machineName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
-    color: Colors.text,
-    fontFamily: "Inter_500Medium",
-  },
-  machineActions: {
-    flexDirection: "row",
-    gap: 4,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.cardAlt,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  overlayBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  sheetWrap: {
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    gap: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: Colors.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 4,
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  imagePicker: {
-    alignSelf: "center",
-    width: 100,
-    height: 100,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: Colors.cardAlt,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderStyle: "dashed",
-  },
-  imagePickerImg: {
-    width: 100,
-    height: 100,
-  },
-  imagePickerPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  imagePickerText: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontFamily: "Inter_400Regular",
-  },
-  imagePickerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  field: { gap: 8 },
-  label: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
-    fontWeight: "500",
-  },
-  input: {
-    backgroundColor: Colors.cardAlt,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    fontFamily: "Inter_400Regular",
-  },
-  formActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: Colors.greyBtn,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cancelBtnText: {
-    color: Colors.text,
-    fontWeight: "600",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  saveBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: Colors.green,
-    alignItems: "center",
-  },
-  saveBtnDisabled: { opacity: 0.4 },
-  saveBtnText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-  },
-});
+function makeStyles(C: AppColors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bg },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: C.text,
+      fontFamily: "Inter_700Bold",
+    },
+    addBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.green,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+    },
+    addBtnText: {
+      color: "#000",
+      fontWeight: "700",
+      fontSize: 14,
+      fontFamily: "Inter_700Bold",
+    },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    emptyIcon: {
+      width: 60,
+      height: 60,
+      borderRadius: 16,
+      backgroundColor: C.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 8,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: C.text,
+      fontFamily: "Inter_600SemiBold",
+    },
+    emptyHint: {
+      fontSize: 14,
+      color: C.textSecondary,
+      fontFamily: "Inter_400Regular",
+    },
+    list: { paddingHorizontal: 20, gap: 10, paddingTop: 8 },
+    machineCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: C.card,
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    machineImg: { width: 44, height: 44, borderRadius: 10 },
+    machineImgPlaceholder: {
+      width: 44,
+      height: 44,
+      borderRadius: 10,
+      backgroundColor: C.greenMuted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    machineName: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: "500",
+      color: C.text,
+      fontFamily: "Inter_500Medium",
+    },
+    machineActions: { flexDirection: "row", gap: 4 },
+    iconBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: C.cardAlt,
+    },
+    overlay: { flex: 1, justifyContent: "flex-end" },
+    overlayBg: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    sheetWrap: { justifyContent: "flex-end" },
+    sheet: {
+      backgroundColor: C.card,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 24,
+      gap: 16,
+      borderTopWidth: 1,
+      borderTopColor: C.border,
+    },
+    sheetHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: C.border,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: 4,
+    },
+    sheetTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: C.text,
+      fontFamily: "Inter_700Bold",
+    },
+    imagePicker: {
+      alignSelf: "center",
+      width: 100,
+      height: 100,
+      borderRadius: 16,
+      overflow: "hidden",
+      backgroundColor: C.cardAlt,
+      borderWidth: 1.5,
+      borderColor: C.border,
+      borderStyle: "dashed",
+    },
+    imagePickerImg: { width: 100, height: 100 },
+    imagePickerPlaceholder: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    },
+    imagePickerText: {
+      fontSize: 11,
+      color: C.textMuted,
+      fontFamily: "Inter_400Regular",
+    },
+    imagePickerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    field: { gap: 8 },
+    label: {
+      fontSize: 13,
+      color: C.textSecondary,
+      fontFamily: "Inter_500Medium",
+      fontWeight: "500",
+    },
+    input: {
+      backgroundColor: C.cardAlt,
+      borderRadius: 12,
+      padding: 14,
+      fontSize: 15,
+      color: C.text,
+      borderWidth: 1,
+      borderColor: C.border,
+      fontFamily: "Inter_400Regular",
+    },
+    formActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+    cancelBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: C.greyBtn,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    cancelBtnText: {
+      color: C.text,
+      fontWeight: "600",
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+    },
+    saveBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: C.green,
+      alignItems: "center",
+    },
+    saveBtnDisabled: { opacity: 0.4 },
+    saveBtnText: {
+      color: "#000",
+      fontWeight: "700",
+      fontSize: 15,
+      fontFamily: "Inter_700Bold",
+    },
+  });
+}

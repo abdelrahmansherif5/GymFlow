@@ -2,9 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useGetDays, useGetDayMachines } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   RefreshControl,
@@ -14,7 +13,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "@/constants/colors";
+import { useSettings } from "@/contexts/SettingsContext";
+import type { AppColors } from "@/constants/colors";
 
 type WorkoutState = "active" | "done" | "cancelled";
 
@@ -35,6 +35,9 @@ interface StreakData {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, settings } = useSettings();
+  const S = useMemo(() => makeStyles(colors), [colors]);
+
   const [workoutState, setWorkoutState] = useState<WorkoutState>("active");
   const [streak, setStreak] = useState<StreakData>({
     streak: 0,
@@ -43,13 +46,14 @@ export default function HomeScreen() {
     lastCompletedDate: null,
   });
   const [showDetails, setShowDetails] = useState(false);
-  const [currentDaySetting, setCurrentDaySetting] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: days, refetch: refetchDays } = useGetDays();
-  const todayDay = days?.find(
-    (d) => d.dayName.toLowerCase() === currentDaySetting.toLowerCase()
-  ) ?? days?.[0];
+  const todayDay =
+    days?.find(
+      (d) =>
+        d.dayName.toLowerCase() === settings.currentDay.toLowerCase()
+    ) ?? days?.[0];
 
   const { data: todayMachines } = useGetDayMachines(todayDay?.id ?? 0, {
     query: { enabled: !!todayDay?.id },
@@ -60,19 +64,13 @@ export default function HomeScreen() {
   }, []);
 
   const loadData = async () => {
-    const [streakRaw, stateRaw, dateRaw, settingsRaw] = await Promise.all([
+    const [streakRaw, stateRaw, dateRaw] = await Promise.all([
       AsyncStorage.getItem(STREAK_KEY),
       AsyncStorage.getItem(WORKOUT_STATE_KEY),
       AsyncStorage.getItem(WORKOUT_DATE_KEY),
-      AsyncStorage.getItem("gymflow_settings"),
     ]);
 
     if (streakRaw) setStreak(JSON.parse(streakRaw));
-
-    if (settingsRaw) {
-      const s = JSON.parse(settingsRaw);
-      setCurrentDaySetting(s.currentDay ?? "");
-    }
 
     const savedDate = dateRaw ?? "";
     const todayStr = today();
@@ -98,12 +96,10 @@ export default function HomeScreen() {
     if (!newStreak.completedDates.includes(todayStr)) {
       newStreak.completedDates.push(todayStr);
       newStreak.totalWorkouts += 1;
-
       if (newStreak.lastCompletedDate) {
         const last = new Date(newStreak.lastCompletedDate);
         const now = new Date(todayStr);
-        const diff =
-          (now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24);
+        const diff = (now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24);
         newStreak.streak = diff <= 1.5 ? newStreak.streak + 1 : 1;
       } else {
         newStreak.streak = 1;
@@ -134,9 +130,10 @@ export default function HomeScreen() {
 
   const dayLabel = todayDay?.dayName ?? "Today";
   const workoutType = todayDay?.workoutType ?? "Workout";
+  const hasMachines = !!todayMachines && todayMachines.length > 0;
 
   return (
-    <View style={[styles.root, { backgroundColor: Colors.bg }]}>
+    <View style={[S.root, { backgroundColor: colors.bg }]}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
@@ -144,18 +141,21 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.green}
+            tintColor={colors.green}
           />
         }
       >
         <View
           style={[
-            styles.content,
-            { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 },
+            S.content,
+            {
+              paddingTop: insets.top + 16,
+              paddingBottom: insets.bottom + 100,
+            },
           ]}
         >
-          <Text style={styles.greeting}>GymFlow</Text>
-          <Text style={styles.subGreeting}>
+          <Text style={S.greeting}>GymFlow</Text>
+          <Text style={S.subGreeting}>
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
               month: "long",
@@ -163,142 +163,137 @@ export default function HomeScreen() {
             })}
           </Text>
 
-          <View style={styles.statsRow}>
+          <View style={S.statsRow}>
             <StatCard
               icon="zap"
-              iconColor={Colors.orange}
+              iconColor={colors.orange}
               value={streak.streak}
               label="Day Streak"
-              bg={Colors.orangeMuted}
+              bg={colors.orangeMuted}
+              colors={colors}
             />
             <StatCard
               icon="award"
-              iconColor={Colors.green}
+              iconColor={colors.green}
               value={streak.totalWorkouts}
               label="Total Workouts"
-              bg={Colors.greenMuted}
+              bg={colors.greenMuted}
+              colors={colors}
             />
           </View>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Today's Training</Text>
-              <View style={styles.dayBadge}>
-                <Text style={styles.dayBadgeText}>{dayLabel}</Text>
+          <View style={S.section}>
+            <View style={S.sectionHeader}>
+              <Text style={S.sectionTitle}>Today's Training</Text>
+              <View style={[S.dayBadge, { backgroundColor: colors.greenMuted }]}>
+                <Text style={[S.dayBadgeText, { color: colors.green }]}>
+                  {dayLabel}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.workoutCard}>
-              <View style={styles.workoutInfo}>
-                <Feather name="activity" size={20} color={Colors.green} />
+            <View style={S.workoutCard}>
+              <View style={S.workoutInfo}>
+                <Feather name="activity" size={20} color={colors.green} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.workoutType}>{workoutType}</Text>
-                  <Text style={styles.workoutSub}>
-                    {todayMachines && todayMachines.length > 0
-                      ? `${todayMachines.length} machine${todayMachines.length !== 1 ? "s" : ""} planned`
+                  <Text style={S.workoutType}>{workoutType}</Text>
+                  <Text style={S.workoutSub}>
+                    {hasMachines
+                      ? `${todayMachines!.length} machine${todayMachines!.length !== 1 ? "s" : ""} planned`
                       : "No machines assigned"}
                   </Text>
                 </View>
               </View>
 
-              {workoutState === "active" && (
-                <View style={styles.actionRow}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.btnGreen,
-                      pressed && styles.btnPressed,
-                    ]}
-                    onPress={handleDone}
-                  >
-                    <Feather name="check" size={16} color="#000" />
-                    <Text style={styles.btnGreenText}>Done</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.btnGrey,
-                      pressed && styles.btnPressed,
-                    ]}
-                    onPress={handleCancel}
-                  >
-                    <Feather name="x" size={16} color={Colors.text} />
-                    <Text style={styles.btnGreyText}>Cancel</Text>
-                  </Pressable>
-                  {todayMachines && todayMachines.length > 0 && (
+              <View style={S.actionRow}>
+                {workoutState === "active" && (
+                  <>
                     <Pressable
                       style={({ pressed }) => [
-                        styles.btnDetails,
-                        pressed && styles.btnPressed,
+                        S.btnGreen,
+                        pressed && S.btnPressed,
                       ]}
-                      onPress={() => setShowDetails(true)}
+                      onPress={handleDone}
                     >
-                      <Feather name="list" size={16} color={Colors.textSecondary} />
-                      <Text style={styles.btnDetailsText}>Details</Text>
+                      <Feather name="check" size={16} color="#000" />
+                      <Text style={S.btnGreenText}>Done</Text>
                     </Pressable>
-                  )}
-                </View>
-              )}
+                    <Pressable
+                      style={({ pressed }) => [
+                        S.btnGrey,
+                        pressed && S.btnPressed,
+                      ]}
+                      onPress={handleCancel}
+                    >
+                      <Feather name="x" size={16} color={colors.text} />
+                      <Text style={S.btnGreyText}>Cancel</Text>
+                    </Pressable>
+                  </>
+                )}
 
-              {workoutState === "done" && (
-                <View style={styles.actionRow}>
-                  <View style={styles.statusBadge}>
-                    <Feather name="check-circle" size={14} color={Colors.green} />
-                    <Text style={styles.statusDone}>Completed</Text>
-                  </View>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.btnRedo,
-                      pressed && styles.btnPressed,
+                {workoutState === "done" && (
+                  <View
+                    style={[
+                      S.statusBadge,
+                      { backgroundColor: colors.greenMuted },
                     ]}
+                  >
+                    <Feather
+                      name="check-circle"
+                      size={14}
+                      color={colors.green}
+                    />
+                    <Text style={[S.statusText, { color: colors.green }]}>
+                      Completed
+                    </Text>
+                  </View>
+                )}
+
+                {workoutState === "cancelled" && (
+                  <View
+                    style={[
+                      S.statusBadge,
+                      { backgroundColor: colors.redMuted },
+                    ]}
+                  >
+                    <Feather name="x-circle" size={14} color={colors.red} />
+                    <Text style={[S.statusText, { color: colors.red }]}>
+                      Cancelled
+                    </Text>
+                  </View>
+                )}
+
+                {workoutState !== "active" && (
+                  <Pressable
+                    style={({ pressed }) => [S.btnRedo, pressed && S.btnPressed]}
                     onPress={handleRedo}
                   >
-                    <Feather name="refresh-cw" size={14} color={Colors.textSecondary} />
-                    <Text style={styles.btnRedoText}>Redo</Text>
+                    <Feather
+                      name="refresh-cw"
+                      size={14}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={S.btnRedoText}>Redo</Text>
                   </Pressable>
-                  {todayMachines && todayMachines.length > 0 && (
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.btnDetails,
-                        pressed && styles.btnPressed,
-                      ]}
-                      onPress={() => setShowDetails(true)}
-                    >
-                      <Feather name="list" size={16} color={Colors.textSecondary} />
-                      <Text style={styles.btnDetailsText}>Details</Text>
-                    </Pressable>
-                  )}
-                </View>
-              )}
+                )}
 
-              {workoutState === "cancelled" && (
-                <View style={styles.actionRow}>
-                  <View style={[styles.statusBadge, { backgroundColor: Colors.redMuted }]}>
-                    <Feather name="x-circle" size={14} color={Colors.red} />
-                    <Text style={[styles.statusDone, { color: Colors.red }]}>Cancelled</Text>
-                  </View>
+                {hasMachines && (
                   <Pressable
                     style={({ pressed }) => [
-                      styles.btnRedo,
-                      pressed && styles.btnPressed,
+                      S.btnDetails,
+                      pressed && S.btnPressed,
                     ]}
-                    onPress={handleRedo}
+                    onPress={() => setShowDetails(true)}
                   >
-                    <Feather name="refresh-cw" size={14} color={Colors.textSecondary} />
-                    <Text style={styles.btnRedoText}>Redo</Text>
+                    <Feather
+                      name="list"
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={S.btnDetailsText}>Details</Text>
                   </Pressable>
-                  {todayMachines && todayMachines.length > 0 && (
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.btnDetails,
-                        pressed && styles.btnPressed,
-                      ]}
-                      onPress={() => setShowDetails(true)}
-                    >
-                      <Feather name="list" size={16} color={Colors.textSecondary} />
-                      <Text style={styles.btnDetailsText}>Details</Text>
-                    </Pressable>
-                  )}
-                </View>
-              )}
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -310,25 +305,47 @@ export default function HomeScreen() {
         transparent
         onRequestClose={() => setShowDetails(false)}
       >
-        <Pressable
-          style={styles.overlay}
-          onPress={() => setShowDetails(false)}
-        />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Today's Machines</Text>
-          <Text style={styles.sheetSub}>{dayLabel} — {workoutType}</Text>
+        <Pressable style={S.overlay} onPress={() => setShowDetails(false)} />
+        <View
+          style={[
+            S.sheet,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              paddingBottom: insets.bottom + 24,
+            },
+          ]}
+        >
+          <View style={[S.sheetHandle, { backgroundColor: colors.border }]} />
+          <Text style={S.sheetTitle}>Today's Machines</Text>
+          <Text style={S.sheetSub}>
+            {dayLabel} — {workoutType}
+          </Text>
           {todayMachines && todayMachines.length > 0 ? (
             todayMachines.map((m) => (
-              <View key={m.id} style={styles.machineRow}>
-                <View style={styles.machineIcon}>
-                  <Feather name="activity" size={16} color={Colors.green} />
+              <View
+                key={m.id}
+                style={[
+                  S.machineRow,
+                  {
+                    backgroundColor: colors.cardAlt,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    S.machineIcon,
+                    { backgroundColor: colors.greenMuted },
+                  ]}
+                >
+                  <Feather name="activity" size={16} color={colors.green} />
                 </View>
-                <Text style={styles.machineName}>{m.name}</Text>
+                <Text style={S.machineName}>{m.name}</Text>
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>No machines assigned for today</Text>
+            <Text style={S.emptyText}>No machines assigned for today</Text>
           )}
         </View>
       </Modal>
@@ -342,267 +359,268 @@ function StatCard({
   value,
   label,
   bg,
+  colors,
 }: {
   icon: string;
   iconColor: string;
   value: number;
   label: string;
   bg: string;
+  colors: AppColors;
 }) {
   return (
-    <View style={[styles.statCard, { backgroundColor: Colors.card }]}>
-      <View style={[styles.statIconBg, { backgroundColor: bg }]}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.card,
+        borderRadius: 16,
+        padding: 16,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Feather name={icon as any} size={18} color={iconColor} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text
+        style={{
+          fontSize: 28,
+          fontWeight: "700",
+          color: colors.text,
+          fontFamily: "Inter_700Bold",
+        }}
+      >
+        {value}
+      </Text>
+      <Text
+        style={{
+          fontSize: 12,
+          color: colors.textSecondary,
+          fontFamily: "Inter_400Regular",
+        }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 24 },
-  greeting: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  subGreeting: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: -16,
-    fontFamily: "Inter_400Regular",
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  statIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-  },
-  section: { gap: 12 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  dayBadge: {
-    backgroundColor: Colors.greenMuted,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  dayBadgeText: {
-    fontSize: 12,
-    color: Colors.green,
-    fontFamily: "Inter_500Medium",
-    fontWeight: "600",
-  },
-  workoutCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  workoutInfo: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  workoutType: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  workoutSub: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    fontFamily: "Inter_400Regular",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  btnGreen: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.green,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-  },
-  btnGreenText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-  },
-  btnGrey: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.greyBtn,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  btnGreyText: {
-    color: Colors.text,
-    fontWeight: "600",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  btnDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.greyBtn,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  btnDetailsText: {
-    color: Colors.textSecondary,
-    fontWeight: "600",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  btnRedo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.greyBtn,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  btnRedoText: {
-    color: Colors.textSecondary,
-    fontWeight: "500",
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  btnPressed: { opacity: 0.7 },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.greenMuted,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  statusDone: {
-    color: Colors.green,
-    fontWeight: "600",
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  sheet: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: Colors.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 8,
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  sheetSub: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: -4,
-    fontFamily: "Inter_400Regular",
-  },
-  machineRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: Colors.cardAlt,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  machineIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: Colors.greenMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  machineName: {
-    fontSize: 14,
-    color: Colors.text,
-    fontFamily: "Inter_500Medium",
-    fontWeight: "500",
-  },
-  emptyText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    textAlign: "center",
-    paddingVertical: 16,
-    fontFamily: "Inter_400Regular",
-  },
-});
+function makeStyles(C: AppColors) {
+  return StyleSheet.create({
+    root: { flex: 1 },
+    content: { paddingHorizontal: 20, gap: 24 },
+    greeting: {
+      fontSize: 32,
+      fontWeight: "700",
+      color: C.text,
+      fontFamily: "Inter_700Bold",
+    },
+    subGreeting: {
+      fontSize: 14,
+      color: C.textSecondary,
+      marginTop: -16,
+      fontFamily: "Inter_400Regular",
+    },
+    statsRow: { flexDirection: "row", gap: 12 },
+    section: { gap: 12 },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: C.text,
+      fontFamily: "Inter_600SemiBold",
+    },
+    dayBadge: {
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    dayBadgeText: {
+      fontSize: 12,
+      fontFamily: "Inter_500Medium",
+      fontWeight: "600",
+    },
+    workoutCard: {
+      backgroundColor: C.card,
+      borderRadius: 16,
+      padding: 16,
+      gap: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    workoutInfo: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+    },
+    workoutType: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: C.text,
+      fontFamily: "Inter_600SemiBold",
+    },
+    workoutSub: {
+      fontSize: 12,
+      color: C.textSecondary,
+      marginTop: 2,
+      fontFamily: "Inter_400Regular",
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: 8,
+      flexWrap: "wrap",
+    },
+    btnGreen: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.green,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+    },
+    btnGreenText: {
+      color: "#000",
+      fontWeight: "700",
+      fontSize: 14,
+      fontFamily: "Inter_700Bold",
+    },
+    btnGrey: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.greyBtn,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    btnGreyText: {
+      color: C.text,
+      fontWeight: "600",
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+    },
+    btnDetails: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.greyBtn,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: C.borderLight,
+    },
+    btnDetailsText: {
+      color: C.textSecondary,
+      fontWeight: "600",
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+    },
+    btnRedo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.greyBtn,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    btnRedoText: {
+      color: C.textSecondary,
+      fontWeight: "500",
+      fontSize: 13,
+      fontFamily: "Inter_500Medium",
+    },
+    btnPressed: { opacity: 0.7 },
+    statusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+    },
+    statusText: {
+      fontWeight: "600",
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    sheet: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 24,
+      gap: 12,
+      borderTopWidth: 1,
+    },
+    sheetHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: 8,
+    },
+    sheetTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: C.text,
+      fontFamily: "Inter_700Bold",
+    },
+    sheetSub: {
+      fontSize: 13,
+      color: C.textSecondary,
+      marginTop: -4,
+      fontFamily: "Inter_400Regular",
+    },
+    machineRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+    },
+    machineIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    machineName: {
+      fontSize: 14,
+      color: C.text,
+      fontFamily: "Inter_500Medium",
+      fontWeight: "500",
+    },
+    emptyText: {
+      color: C.textMuted,
+      fontSize: 14,
+      textAlign: "center",
+      paddingVertical: 16,
+      fontFamily: "Inter_400Regular",
+    },
+  });
+}
