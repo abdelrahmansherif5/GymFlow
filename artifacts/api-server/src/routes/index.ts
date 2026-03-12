@@ -3,10 +3,12 @@ import healthRouter from "./health";
 import daysRouter from "./days";
 import machinesRouter from "./machines";
 import settingsRouter from "./settings";
+import dayMachinesRouter from "./dayMachines";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(dayMachinesRouter);
 router.use(daysRouter);
 router.use(machinesRouter);
 router.use(settingsRouter);

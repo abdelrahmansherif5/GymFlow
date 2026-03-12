@@ -8,20 +8,16 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: days
-    description: Workout day management
   - name: machines
-    description: Machine management
   - name: settings
-    description: App settings
+  - name: dayMachines
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -34,7 +30,6 @@ paths:
     get:
       operationId: getDays
       tags: [days]
-      summary: Get all workout days
       responses:
         "200":
           description: List of days
@@ -47,7 +42,6 @@ paths:
     post:
       operationId: createDay
       tags: [days]
-      summary: Create a workout day
       requestBody:
         required: true
         content:
@@ -66,7 +60,6 @@ paths:
     put:
       operationId: updateDay
       tags: [days]
-      summary: Update a workout day
       parameters:
         - name: id
           in: path
@@ -89,7 +82,6 @@ paths:
     delete:
       operationId: deleteDay
       tags: [days]
-      summary: Delete a workout day
       parameters:
         - name: id
           in: path
@@ -100,11 +92,74 @@ paths:
         "204":
           description: Deleted
 
+  /days/{id}/machines:
+    get:
+      operationId: getDayMachines
+      tags: [dayMachines]
+      summary: Get machines assigned to a day
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of machines for the day
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Machine"
+    post:
+      operationId: addDayMachine
+      tags: [dayMachines]
+      summary: Add a machine to a day
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDayMachineRequest"
+      responses:
+        "201":
+          description: Machine added to day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DayMachine"
+
+  /days/{id}/machines/{machineId}:
+    delete:
+      operationId: removeDayMachine
+      tags: [dayMachines]
+      summary: Remove a machine from a day
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: machineId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
   /machines:
     get:
       operationId: getMachines
       tags: [machines]
-      summary: Get all machines
       responses:
         "200":
           description: List of machines
@@ -117,7 +172,6 @@ paths:
     post:
       operationId: createMachine
       tags: [machines]
-      summary: Create a machine
       requestBody:
         required: true
         content:
@@ -136,7 +190,6 @@ paths:
     put:
       operationId: updateMachine
       tags: [machines]
-      summary: Update a machine
       parameters:
         - name: id
           in: path
@@ -159,7 +212,6 @@ paths:
     delete:
       operationId: deleteMachine
       tags: [machines]
-      summary: Delete a machine
       parameters:
         - name: id
           in: path
@@ -174,7 +226,6 @@ paths:
     get:
       operationId: getSettings
       tags: [settings]
-      summary: Get app settings
       responses:
         "200":
           description: App settings
@@ -185,7 +236,6 @@ paths:
     put:
       operationId: updateSettings
       tags: [settings]
-      summary: Update app settings
       requestBody:
         required: true
         content:
@@ -207,8 +257,7 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     Day:
       type: object
@@ -225,10 +274,7 @@ components:
           nullable: true
         orderIndex:
           type: integer
-      required:
-        - id
-        - dayName
-        - orderIndex
+      required: [id, dayName, orderIndex]
 
     CreateDayRequest:
       type: object
@@ -243,9 +289,7 @@ components:
           nullable: true
         orderIndex:
           type: integer
-      required:
-        - dayName
-        - orderIndex
+      required: [dayName, orderIndex]
 
     UpdateDayRequest:
       type: object
@@ -271,9 +315,7 @@ components:
         imageUrl:
           type: string
           nullable: true
-      required:
-        - id
-        - name
+      required: [id, name]
 
     CreateMachineRequest:
       type: object
@@ -283,8 +325,7 @@ components:
         imageUrl:
           type: string
           nullable: true
-      required:
-        - name
+      required: [name]
 
     UpdateMachineRequest:
       type: object
@@ -294,6 +335,22 @@ components:
         imageUrl:
           type: string
           nullable: true
+
+    DayMachine:
+      type: object
+      properties:
+        dayId:
+          type: integer
+        machineId:
+          type: integer
+      required: [dayId, machineId]
+
+    AddDayMachineRequest:
+      type: object
+      properties:
+        machineId:
+          type: integer
+      required: [machineId]
 
     Settings:
       type: object
@@ -306,10 +363,7 @@ components:
         theme:
           type: string
           enum: [light, dark]
-      required:
-        - currentDay
-        - language
-        - theme
+      required: [currentDay, language, theme]
 
     UpdateSettingsRequest:
       type: object

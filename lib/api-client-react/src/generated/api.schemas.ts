@@ -47,6 +47,15 @@ export interface UpdateMachineRequest {
   imageUrl?: string | null;
 }
 
+export interface DayMachine {
+  dayId: number;
+  machineId: number;
+}
+
+export interface AddDayMachineRequest {
+  machineId: number;
+}
+
 export type SettingsLanguage =
   (typeof SettingsLanguage)[keyof typeof SettingsLanguage];
 

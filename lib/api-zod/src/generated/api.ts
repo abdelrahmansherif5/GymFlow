@@ -8,16 +8,12 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
 
-/**
- * @summary Get all workout days
- */
 export const GetDaysResponseItem = zod.object({
   id: zod.number(),
   dayName: zod.string(),
@@ -27,9 +23,6 @@ export const GetDaysResponseItem = zod.object({
 });
 export const GetDaysResponse = zod.array(GetDaysResponseItem);
 
-/**
- * @summary Create a workout day
- */
 export const CreateDayBody = zod.object({
   dayName: zod.string(),
   workoutType: zod.string().nullish(),
@@ -37,9 +30,6 @@ export const CreateDayBody = zod.object({
   orderIndex: zod.number(),
 });
 
-/**
- * @summary Update a workout day
- */
 export const UpdateDayParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -59,16 +49,43 @@ export const UpdateDayResponse = zod.object({
   orderIndex: zod.number(),
 });
 
-/**
- * @summary Delete a workout day
- */
 export const DeleteDayParams = zod.object({
   id: zod.coerce.number(),
 });
 
 /**
- * @summary Get all machines
+ * @summary Get machines assigned to a day
  */
+export const GetDayMachinesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetDayMachinesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+export const GetDayMachinesResponse = zod.array(GetDayMachinesResponseItem);
+
+/**
+ * @summary Add a machine to a day
+ */
+export const AddDayMachineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddDayMachineBody = zod.object({
+  machineId: zod.number(),
+});
+
+/**
+ * @summary Remove a machine from a day
+ */
+export const RemoveDayMachineParams = zod.object({
+  id: zod.coerce.number(),
+  machineId: zod.coerce.number(),
+});
+
 export const GetMachinesResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -76,17 +93,11 @@ export const GetMachinesResponseItem = zod.object({
 });
 export const GetMachinesResponse = zod.array(GetMachinesResponseItem);
 
-/**
- * @summary Create a machine
- */
 export const CreateMachineBody = zod.object({
   name: zod.string(),
   imageUrl: zod.string().nullish(),
 });
 
-/**
- * @summary Update a machine
- */
 export const UpdateMachineParams = zod.object({
   id: zod.coerce.number(),
 });
@@ -102,25 +113,16 @@ export const UpdateMachineResponse = zod.object({
   imageUrl: zod.string().nullish(),
 });
 
-/**
- * @summary Delete a machine
- */
 export const DeleteMachineParams = zod.object({
   id: zod.coerce.number(),
 });
 
-/**
- * @summary Get app settings
- */
 export const GetSettingsResponse = zod.object({
   currentDay: zod.string(),
   language: zod.enum(["en", "ar"]),
   theme: zod.enum(["light", "dark"]),
 });
 
-/**
- * @summary Update app settings
- */
 export const UpdateSettingsBody = zod.object({
   currentDay: zod.string().optional(),
   language: zod.enum(["en", "ar"]).optional(),

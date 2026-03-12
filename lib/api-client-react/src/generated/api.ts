@@ -17,9 +17,11 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AddDayMachineRequest,
   CreateDayRequest,
   CreateMachineRequest,
   Day,
+  DayMachine,
   HealthStatus,
   Machine,
   Settings,
@@ -38,7 +40,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -113,9 +114,6 @@ export function useHealthCheck<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Get all workout days
- */
 export const getGetDaysUrl = () => {
   return `/api/days`;
 };
@@ -158,10 +156,6 @@ export type GetDaysQueryResult = NonNullable<
 >;
 export type GetDaysQueryError = ErrorType<unknown>;
 
-/**
- * @summary Get all workout days
- */
-
 export function useGetDays<
   TData = Awaited<ReturnType<typeof getDays>>,
   TError = ErrorType<unknown>,
@@ -178,9 +172,6 @@ export function useGetDays<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Create a workout day
- */
 export const getCreateDayUrl = () => {
   return `/api/days`;
 };
@@ -241,9 +232,6 @@ export type CreateDayMutationResult = NonNullable<
 export type CreateDayMutationBody = BodyType<CreateDayRequest>;
 export type CreateDayMutationError = ErrorType<unknown>;
 
-/**
- * @summary Create a workout day
- */
 export const useCreateDay = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -264,9 +252,6 @@ export const useCreateDay = <
   return useMutation(getCreateDayMutationOptions(options));
 };
 
-/**
- * @summary Update a workout day
- */
 export const getUpdateDayUrl = (id: number) => {
   return `/api/days/${id}`;
 };
@@ -328,9 +313,6 @@ export type UpdateDayMutationResult = NonNullable<
 export type UpdateDayMutationBody = BodyType<UpdateDayRequest>;
 export type UpdateDayMutationError = ErrorType<unknown>;
 
-/**
- * @summary Update a workout day
- */
 export const useUpdateDay = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -351,9 +333,6 @@ export const useUpdateDay = <
   return useMutation(getUpdateDayMutationOptions(options));
 };
 
-/**
- * @summary Delete a workout day
- */
 export const getDeleteDayUrl = (id: number) => {
   return `/api/days/${id}`;
 };
@@ -412,9 +391,6 @@ export type DeleteDayMutationResult = NonNullable<
 
 export type DeleteDayMutationError = ErrorType<unknown>;
 
-/**
- * @summary Delete a workout day
- */
 export const useDeleteDay = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -436,8 +412,264 @@ export const useDeleteDay = <
 };
 
 /**
- * @summary Get all machines
+ * @summary Get machines assigned to a day
  */
+export const getGetDayMachinesUrl = (id: number) => {
+  return `/api/days/${id}/machines`;
+};
+
+export const getDayMachines = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Machine[]> => {
+  return customFetch<Machine[]>(getGetDayMachinesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDayMachinesQueryKey = (id: number) => {
+  return [`/api/days/${id}/machines`] as const;
+};
+
+export const getGetDayMachinesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDayMachines>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDayMachines>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDayMachinesQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getDayMachines>>> = ({
+    signal,
+  }) => getDayMachines(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDayMachines>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDayMachinesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDayMachines>>
+>;
+export type GetDayMachinesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get machines assigned to a day
+ */
+
+export function useGetDayMachines<
+  TData = Awaited<ReturnType<typeof getDayMachines>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDayMachines>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDayMachinesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a machine to a day
+ */
+export const getAddDayMachineUrl = (id: number) => {
+  return `/api/days/${id}/machines`;
+};
+
+export const addDayMachine = async (
+  id: number,
+  addDayMachineRequest: AddDayMachineRequest,
+  options?: RequestInit,
+): Promise<DayMachine> => {
+  return customFetch<DayMachine>(getAddDayMachineUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addDayMachineRequest),
+  });
+};
+
+export const getAddDayMachineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addDayMachine>>,
+    TError,
+    { id: number; data: BodyType<AddDayMachineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addDayMachine>>,
+  TError,
+  { id: number; data: BodyType<AddDayMachineRequest> },
+  TContext
+> => {
+  const mutationKey = ["addDayMachine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addDayMachine>>,
+    { id: number; data: BodyType<AddDayMachineRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return addDayMachine(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddDayMachineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addDayMachine>>
+>;
+export type AddDayMachineMutationBody = BodyType<AddDayMachineRequest>;
+export type AddDayMachineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a machine to a day
+ */
+export const useAddDayMachine = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addDayMachine>>,
+    TError,
+    { id: number; data: BodyType<AddDayMachineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addDayMachine>>,
+  TError,
+  { id: number; data: BodyType<AddDayMachineRequest> },
+  TContext
+> => {
+  return useMutation(getAddDayMachineMutationOptions(options));
+};
+
+/**
+ * @summary Remove a machine from a day
+ */
+export const getRemoveDayMachineUrl = (id: number, machineId: number) => {
+  return `/api/days/${id}/machines/${machineId}`;
+};
+
+export const removeDayMachine = async (
+  id: number,
+  machineId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveDayMachineUrl(id, machineId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveDayMachineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeDayMachine>>,
+    TError,
+    { id: number; machineId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeDayMachine>>,
+  TError,
+  { id: number; machineId: number },
+  TContext
+> => {
+  const mutationKey = ["removeDayMachine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeDayMachine>>,
+    { id: number; machineId: number }
+  > = (props) => {
+    const { id, machineId } = props ?? {};
+
+    return removeDayMachine(id, machineId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveDayMachineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeDayMachine>>
+>;
+
+export type RemoveDayMachineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a machine from a day
+ */
+export const useRemoveDayMachine = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeDayMachine>>,
+    TError,
+    { id: number; machineId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeDayMachine>>,
+  TError,
+  { id: number; machineId: number },
+  TContext
+> => {
+  return useMutation(getRemoveDayMachineMutationOptions(options));
+};
+
 export const getGetMachinesUrl = () => {
   return `/api/machines`;
 };
@@ -486,10 +718,6 @@ export type GetMachinesQueryResult = NonNullable<
 >;
 export type GetMachinesQueryError = ErrorType<unknown>;
 
-/**
- * @summary Get all machines
- */
-
 export function useGetMachines<
   TData = Awaited<ReturnType<typeof getMachines>>,
   TError = ErrorType<unknown>,
@@ -510,9 +738,6 @@ export function useGetMachines<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Create a machine
- */
 export const getCreateMachineUrl = () => {
   return `/api/machines`;
 };
@@ -573,9 +798,6 @@ export type CreateMachineMutationResult = NonNullable<
 export type CreateMachineMutationBody = BodyType<CreateMachineRequest>;
 export type CreateMachineMutationError = ErrorType<unknown>;
 
-/**
- * @summary Create a machine
- */
 export const useCreateMachine = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -596,9 +818,6 @@ export const useCreateMachine = <
   return useMutation(getCreateMachineMutationOptions(options));
 };
 
-/**
- * @summary Update a machine
- */
 export const getUpdateMachineUrl = (id: number) => {
   return `/api/machines/${id}`;
 };
@@ -660,9 +879,6 @@ export type UpdateMachineMutationResult = NonNullable<
 export type UpdateMachineMutationBody = BodyType<UpdateMachineRequest>;
 export type UpdateMachineMutationError = ErrorType<unknown>;
 
-/**
- * @summary Update a machine
- */
 export const useUpdateMachine = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -683,9 +899,6 @@ export const useUpdateMachine = <
   return useMutation(getUpdateMachineMutationOptions(options));
 };
 
-/**
- * @summary Delete a machine
- */
 export const getDeleteMachineUrl = (id: number) => {
   return `/api/machines/${id}`;
 };
@@ -744,9 +957,6 @@ export type DeleteMachineMutationResult = NonNullable<
 
 export type DeleteMachineMutationError = ErrorType<unknown>;
 
-/**
- * @summary Delete a machine
- */
 export const useDeleteMachine = <
   TError = ErrorType<unknown>,
   TContext = unknown,
@@ -767,9 +977,6 @@ export const useDeleteMachine = <
   return useMutation(getDeleteMachineMutationOptions(options));
 };
 
-/**
- * @summary Get app settings
- */
 export const getGetSettingsUrl = () => {
   return `/api/settings`;
 };
@@ -816,10 +1023,6 @@ export type GetSettingsQueryResult = NonNullable<
 >;
 export type GetSettingsQueryError = ErrorType<unknown>;
 
-/**
- * @summary Get app settings
- */
-
 export function useGetSettings<
   TData = Awaited<ReturnType<typeof getSettings>>,
   TError = ErrorType<unknown>,
@@ -840,9 +1043,6 @@ export function useGetSettings<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-/**
- * @summary Update app settings
- */
 export const getUpdateSettingsUrl = () => {
   return `/api/settings`;
 };
@@ -903,9 +1103,6 @@ export type UpdateSettingsMutationResult = NonNullable<
 export type UpdateSettingsMutationBody = BodyType<UpdateSettingsRequest>;
 export type UpdateSettingsMutationError = ErrorType<unknown>;
 
-/**
- * @summary Update app settings
- */
 export const useUpdateSettings = <
   TError = ErrorType<unknown>,
   TContext = unknown,

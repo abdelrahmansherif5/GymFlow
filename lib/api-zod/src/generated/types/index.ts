@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./addDayMachineRequest";
 export * from "./createDayRequest";
 export * from "./createMachineRequest";
 export * from "./day";
+export * from "./dayMachine";
 export * from "./healthStatus";
 export * from "./machine";
 export * from "./settings";
