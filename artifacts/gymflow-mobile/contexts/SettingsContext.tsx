@@ -7,15 +7,15 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Alert, I18nManager } from "react-native";
-import * as Updates from "expo";
+import { Alert } from "react-native";
 import { AppColors, DarkColors, LightColors } from "@/constants/colors";
+import { translations, type Lang, type Translations } from "@/constants/translations";
 
 const SETTINGS_CACHE_KEY = "gymflow_settings";
 
 type SettingsState = {
   currentDay: string;
-  language: "en" | "ar";
+  language: Lang;
   theme: "dark" | "light";
 };
 
@@ -23,6 +23,7 @@ type SettingsContextValue = {
   settings: SettingsState;
   colors: AppColors;
   isRTL: boolean;
+  t: Translations;
   updateSetting: (field: keyof SettingsState, value: string) => Promise<void>;
   loading: boolean;
 };
@@ -37,6 +38,7 @@ const SettingsContext = createContext<SettingsContextValue>({
   settings: defaultSettings,
   colors: DarkColors,
   isRTL: false,
+  t: translations.en,
   updateSetting: async () => {},
   loading: true,
 });
@@ -55,8 +57,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (apiSettings) {
       const s: SettingsState = {
         currentDay: apiSettings.currentDay,
-        language: apiSettings.language as "en" | "ar",
-        theme: apiSettings.theme as "dark" | "light",
+        language: (apiSettings.language as Lang) ?? "en",
+        theme: (apiSettings.theme as "dark" | "light") ?? "dark",
       };
       setSettings(s);
       AsyncStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(s));
@@ -76,7 +78,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const updateSetting = useCallback(
     async (field: keyof SettingsState, value: string) => {
-      const next = { ...settings, [field]: value };
+      const next = { ...settings, [field]: value } as SettingsState;
       setSettings(next);
       await AsyncStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(next));
 
@@ -87,32 +89,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           theme: next.theme,
         });
       } catch {
-        Alert.alert("Error", "Could not save settings.");
-      }
-
-      if (field === "language") {
-        const wantRTL = value === "ar";
-        if (I18nManager.isRTL !== wantRTL) {
-          I18nManager.forceRTL(wantRTL);
-          Alert.alert(
-            "Restart Required",
-            "Please close and reopen the app to apply the language change.",
-            [{ text: "OK" }]
-          );
-        }
+        Alert.alert(
+          translations[next.language].error,
+          translations[next.language].couldNotSaveSettings
+        );
       }
     },
     [settings]
   );
 
-  const colors: AppColors =
-    settings.theme === "light" ? LightColors : DarkColors;
+  const colors: AppColors = settings.theme === "light" ? LightColors : DarkColors;
   const isRTL = settings.language === "ar";
+  const t = translations[settings.language];
 
   return (
-    <SettingsContext.Provider
-      value={{ settings, colors, isRTL, updateSetting, loading }}
-    >
+    <SettingsContext.Provider value={{ settings, colors, isRTL, t, updateSetting, loading }}>
       {children}
     </SettingsContext.Provider>
   );
